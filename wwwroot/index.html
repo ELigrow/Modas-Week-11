@@ -21,7 +21,11 @@
     <nav class="navbar fixed-top navbar-light" style="background-color:#dedede;">
         <div class="navbar-brand">
             <i class="fas fa-shield-alt"></i>
+            <span class="d-inline d-md-none">MODAS</span>
             <span class="d-none d-md-inline" style="font-variant:small-caps;">Moving Object Detection Alert System</span>
+            <button id="auto-refresh" type="button" class="btn btn-primary" data-val="false">
+                <i class="far fa-square"></i> Auto Refresh
+            </button>
         </div>
     </nav>
     <!-- content -->
@@ -45,6 +49,7 @@
                 of
                 <span id="total">##</span>
             </div>
+            <div id="current" class="d-none" data-val=""></div>
             <div class="col text-right">
                 <button disabled id="next" class="btn btn-outline-secondary" type="button"><span class="d-none d-md-inline">Next </span><i class="fas fa-angle-right"></i></button>
                 <button disabled id="last" class="btn btn-outline-secondary"><span class="d-none d-md-inline">Last </span><i class="fas fa-angle-double-right"></i></button>

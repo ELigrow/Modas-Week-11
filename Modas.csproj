@@ -17,10 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="appsettings.json" />
     <Content Remove="wwwroot\js\bootstrap.bundle.min.js" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="appsettings.json" />
     <None Include="wwwroot\js\bootstrap.bundle.min.js" />
+    <None Include="wwwroot\soundscrate-bell.mp3" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Models\FakeEventRepository.cs" />

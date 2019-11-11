@@ -1,7 +1,27 @@
 ﻿// Turn off ESLint (Windows): Tools - Options - Text Editor - Javascript - Linting
 $(function () {
     var toasts = [];
+    var refreshInterval;
+    var snd = new Audio('../soundscrate-bell.mp3');
     getEvents(1);
+
+    function refreshEvents() {
+        $.getJSON({
+            url: "../api/event/count",
+            success: function (response, textStatus, jqXhr) {
+                if (response != $('#total').html()) {
+                    console.log("success");
+                    getEvents($('#current').data('val'));
+                    toast("Motion Detected", "New motion alert detected", "far fa-bell");
+                    snd.play();
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                // log the error to the console
+                console.log("The following error occured: " + jqXHR.status, errorThrown);
+            }
+        });
+    }
 
     function getEvents(page) {
         $.getJSON({
@@ -55,7 +75,30 @@ $(function () {
         getEvents($(this).data('page'));
     });
 
-    function toast(header, text, icon){
+    // event listener to toggle data auto-refresh
+    $('#auto-refresh').on('click', function () {
+        $(this).data('val', !($(this).data('val')));
+        initAutoRefresh();
+    });
+
+    function initAutoRefresh() {
+        // if auto-refresh button is set to true
+        if ($('#auto-refresh').data('val')) {
+            // display checked icon
+            $('#auto-refresh i').removeClass('fa-square').addClass('fa-check-square');
+            // start timer
+            refreshInterval = setInterval(refreshEvents, 2000);
+        } else {
+            // display unchecked icon
+            $('#auto-refresh i').removeClass('fa-check-square').addClass('fa-square');
+            // if the timer is on, clear it
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+    }
+
+    function toast(header, text, icon) {
         // create unique id for toast using array length
         var id = toasts.length;
         // generate html for toast
@@ -106,6 +149,7 @@ $(function () {
         $('#next').data('page', p.nextPage);
         $('#prev').data('page', p.previousPage);
         $('#last').data('page', p.totalPages);
+        $('#current').data('val', p.currentPage);
     }
 
     function initButtons() {
@@ -115,7 +159,7 @@ $(function () {
         $('#last, #next').prop('disabled', $('#end').html() == $('#total').html());
     }
 
-    function get_long_date(str){
+    function get_long_date(str) {
         var month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         var dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         var full_date = str.split("T")[0];
@@ -123,13 +167,13 @@ $(function () {
         var month = full_date.split("-")[1];
         var date = full_date.split("-")[2];
         var d = new Date(year + "-" + Number(month) + "-" + Number(date))
-                    
+
         return dow[d.getDay()] + ", " + month_names[d.getMonth()] + " " + date + ", " + year;
     }
-    function get_short_date(str){
+    function get_short_date(str) {
         return str.split("T")[0];
     }
-    function get_time(str){
+    function get_time(str) {
         var time = str.split("T")[1];
         var hours = Number(time.split(":")[0]);
         var am_pm = hours >= 12 ? " PM" : " AM";
@@ -138,5 +182,5 @@ $(function () {
         hours = hours < 10 ? "0" + hours : hours + "";
         var minutes = time.split(":")[1];
         return hours + ":" + minutes + am_pm;
-    }   
+    }
 });
