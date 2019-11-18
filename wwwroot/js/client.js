@@ -1,9 +1,26 @@
-﻿// Turn off ESLint (Windows): Tools - Options - Text Editor - Javascript - Linting
-$(function () {
+﻿$(function () {
     var toasts = [];
     var refreshInterval;
-    var snd = new Audio('../soundscrate-bell.mp3');
-    getEvents(1);
+    var snd = new Audio("../bell.wav"); // buffers automatically when created
+    verifyToken()
+
+    function verifyToken() {
+        // check for existing token
+        var token = Cookies.get('token');
+        if (token) {
+            // user has token
+            getEvents(1);
+            // hide sign in link, show sign out link
+            $('#signIn').hide();
+            $('#signOut').show();
+        } else {
+            // show sign in link, hide sign out link
+            $('#signIn').show();
+            $('#signOut').hide();
+            // display modal
+            $('#signInModal').modal();
+        }
+    }
 
     function refreshEvents() {
         $.getJSON({
@@ -12,7 +29,9 @@ $(function () {
                 if (response != $('#total').html()) {
                     console.log("success");
                     getEvents($('#current').data('val'));
-                    toast("Motion Detected", "New motion alert detected", "far fa-bell");
+                    // Toast
+                    toast("Motion Detected", "New motion alert detected!", "fas fa-user-secret");
+                    // play sound effect
                     snd.play();
                 }
             },
@@ -25,19 +44,45 @@ $(function () {
 
     function getEvents(page) {
         $.getJSON({
+            headers: { "Authorization": 'Bearer ' + Cookies.get('token') },
             url: "../api/event/page" + page,
             success: function (response, textStatus, jqXhr) {
                 //console.log(response);
                 showTableBody(response.events);
                 showPagingInfo(response.pagingInfo);
                 initButtons();
+                // Show content
+                $('#content').show();
             },
             error: function (jqXHR, textStatus, errorThrown) {
+                // check for 401 - Unauthorized
+                if (jqXHR.status == 401) {
+                    console.log("token expired");
+                }
                 // log the error to the console
                 console.log("The following error occured: " + jqXHR.status, errorThrown);
             }
         });
     }
+
+    $('#signIn a').on('click', function (e) {
+        e.preventDefault();
+        // display modal
+        $('#signInModal').modal();
+    });
+
+    $('#signOut a').on('click', function (e) {
+        e.preventDefault();
+        // delete cookie
+        Cookies.remove('token');
+        // delete html from table body
+        $('tbody').html("");
+        // hide content
+        $('#content').hide();
+        // hide sign out link, show sign in link
+        $('#signIn').show();
+        $('#signOut').hide();
+    });
 
     // delegated event handler needed
     // http://api.jquery.com/on/#direct-and-delegated-events
@@ -70,6 +115,61 @@ $(function () {
         });
     });
 
+    $(".signInField").keyup(function (event) {
+        if (event.keyCode === 13) {
+            $("#submitButton").click();
+        }
+    });
+
+    $('#submitButton').on('click', function (e) {
+        e.preventDefault();
+        // reset any fields marked with errors
+        $('.form-control').removeClass('is-invalid');
+        // create an empty errors array
+        var errors = [];
+        // check for empty username
+        if ($('#username').val().length == 0) {
+            errors.push($('#username'));
+            $('#usernameError').html('Please enter a username.');
+        } else {
+            $('#usernameError').hide();
+        }
+        // check for empty password
+        if ($('#password').val().length == 0) {
+            errors.push($('#password'));
+            $('#passwordError').html('Please enter a password.');
+        } else {
+            $('#passwordError').hide();
+        }
+        // username and/or password empty, display errors
+        if (errors.length > 0) {
+            showErrors(errors);
+        } else {
+            // verify username and password using the token api
+            $.ajax({
+                headers: { 'Content-Type': 'application/json' },
+                url: "../api/token",
+                type: 'post',
+                data: JSON.stringify({ "username": $('#username').val(), "password": $('#password').val() }),
+                success: function (data) {
+                    // save token in a cookie
+                    Cookies.set('token', data["token"], { expires: 7 });
+                    // hide modal
+                    $('#signInModal').modal('hide');
+                    verifyToken();
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    // log the error to the console
+                    console.log("The following error occured: " + jqXHR.status, errorThrown);
+                    if (jqXHR.status == 401) {
+                        //show login error on modal
+                        $('#error').html('Incorrect password or username.');
+                    }
+                }
+            });
+        }
+    });
+
     // event listeners for first/next/prev/last buttons
     $('#next, #prev, #first, #last').on('click', function () {
         getEvents($(this).data('page'));
@@ -80,6 +180,18 @@ $(function () {
         $(this).data('val', !($(this).data('val')));
         initAutoRefresh();
     });
+
+    function showErrors(errors) {
+        for (var i = 0; i < errors.length; i++) {
+            // apply bootstrap is-invalid class to any field with errors
+            errors[i].addClass('is-invalid');;
+        }
+        // shake modal for effect
+        $('#signInModal').css('animation-duration', '0.7s')
+        $('#signInModal').addClass('animated shake').on('animationend', function () {
+            $(this).removeClass('animated shake');
+        });
+    }
 
     function initAutoRefresh() {
         // if auto-refresh button is set to true

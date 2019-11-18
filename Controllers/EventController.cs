@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modas.Models;
 using Modas.Models.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modas.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]"), Authorize]
     public class EventController : Controller
     {
         private readonly int PageSize = 20;
@@ -20,7 +21,7 @@ namespace Modas.Controllers
         public IEnumerable<Event> Get() => repository.Events
             .Include(e => e.Location);
 
-        [HttpGet]
+        [HttpGet, AllowAnonymous]
         [Route("count")]
         public int GetCount() => repository.Events.Count();
 
@@ -67,7 +68,7 @@ namespace Modas.Controllers
         // update event
         public Event Put([FromBody] Event evt) => repository.UpdateEvent(evt);
 
-        [HttpPatch("{id}")]
+        [HttpPatch("{id}"), Authorize]
         // update event (specific fields)
         public void Patch(int id, [FromBody]JsonPatchDocument<Event> patch) => repository.PatchEvent(id, patch);
 
