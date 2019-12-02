@@ -13,6 +13,10 @@
             // hide sign in link, show sign out link
             $('#signIn').hide();
             $('#signOut').show();
+            // enable auto-refresh button
+            $("#auto-refresh").prop("disabled", false);
+            // initialize auto-refresh
+            initAutoRefresh()
         } else {
             // show sign in link, hide sign out link
             $('#signIn').show();
@@ -27,7 +31,6 @@
             url: "../api/event/count",
             success: function (response, textStatus, jqXhr) {
                 if (response != $('#total').html()) {
-                    console.log("success");
                     getEvents($('#current').data('val'));
                     // Toast
                     toast("Motion Detected", "New motion alert detected!", "fas fa-user-secret");
@@ -36,6 +39,11 @@
                 }
             },
             error: function (jqXHR, textStatus, errorThrown) {
+                // check for 401 - Unauthorized
+                if (jqXHR.status == 401) {
+                    $('#signOut a').click();
+                    console.log("token expired");
+                }
                 // log the error to the console
                 console.log("The following error occured: " + jqXHR.status, errorThrown);
             }
@@ -47,7 +55,6 @@
             headers: { "Authorization": 'Bearer ' + Cookies.get('token') },
             url: "../api/event/page" + page,
             success: function (response, textStatus, jqXhr) {
-                //console.log(response);
                 showTableBody(response.events);
                 showPagingInfo(response.pagingInfo);
                 initButtons();
@@ -57,6 +64,7 @@
             error: function (jqXHR, textStatus, errorThrown) {
                 // check for 401 - Unauthorized
                 if (jqXHR.status == 401) {
+                    $('#signOut a').click();
                     console.log("token expired");
                 }
                 // log the error to the console
@@ -82,6 +90,12 @@
         // hide sign out link, show sign in link
         $('#signIn').show();
         $('#signOut').hide();
+        // disable auto-refresh button
+        $("#auto-refresh").prop("disabled", true);
+        // if timer is running, clear it
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
     });
 
     // delegated event handler needed
@@ -104,11 +118,15 @@
             type: 'patch',
             data: JSON.stringify([{ "op": "replace", "path": "Flagged", "value": checked }]),
             success: function () {
-                //console.log("success");
                 // Toast
                 toast("Update Complete", "Event flag " + (checked ? "added." : "removed."), "far fa-edit");
             },
             error: function (jqXHR, textStatus, errorThrown) {
+                // check for 401 - Unauthorized
+                if (jqXHR.status == 401) {
+                    console.log("cookie expired");
+                    $('#signOut a').click();
+                }
                 // log the error to the console
                 console.log("The following error occured: " + jqXHR.status, errorThrown);
             }
@@ -130,16 +148,10 @@
         // check for empty username
         if ($('#username').val().length == 0) {
             errors.push($('#username'));
-            $('#usernameError').html('Please enter a username.');
-        } else {
-            $('#usernameError').hide();
         }
         // check for empty password
         if ($('#password').val().length == 0) {
             errors.push($('#password'));
-            $('#passwordError').html('Please enter a password.');
-        } else {
-            $('#passwordError').hide();
         }
         // username and/or password empty, display errors
         if (errors.length > 0) {
@@ -161,10 +173,6 @@
                 error: function (jqXHR, textStatus, errorThrown) {
                     // log the error to the console
                     console.log("The following error occured: " + jqXHR.status, errorThrown);
-                    if (jqXHR.status == 401) {
-                        //show login error on modal
-                        $('#error').html('Incorrect password or username.');
-                    }
                 }
             });
         }
@@ -198,6 +206,10 @@
         if ($('#auto-refresh').data('val')) {
             // display checked icon
             $('#auto-refresh i').removeClass('fa-square').addClass('fa-check-square');
+            // if the timer is on, clear it (this is probably unnecessary)
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
             // start timer
             refreshInterval = setInterval(refreshEvents, 2000);
         } else {
